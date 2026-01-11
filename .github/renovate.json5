@@ -15,6 +15,9 @@
       matchManagers: [
         "terraform"
       ],
+      matchDepTypes: [
+        '!/^required_version$/'
+      ],
       rangeStrategy: "pin"
     },
   ],
