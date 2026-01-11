@@ -7,6 +7,7 @@ require (
 	github.com/GoogleCloudPlatform/functions-framework-go v1.9.2
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-github/v67 v67.0.0
+	github.com/google/go-github/v75 v75.0.0
 	github.com/google/go-github/v81 v81.0.0
 )
 
