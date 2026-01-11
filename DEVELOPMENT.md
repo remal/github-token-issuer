@@ -19,12 +19,18 @@ Technical implementation details and architecture documentation for the GitHub R
 
 The app is a stateless Cloud Run Function that acts as a broker between GitHub Actions workflows and GitHub's installation token API. It validates requests, checks permissions, and issues short-lived tokens.
 
-**Key Design Decisions:**
+**Priorities (in order):**
 
-1. **Stateless Design**: No database or persistent storage. All validation happens per-request.
-2. **Fail Fast**: Errors are returned immediately without retries to keep logic simple.
-3. **No Caching**: Fetch fresh data from Secret Manager and GitHub API on every request to avoid stale data.
-4. **Repository Permissions Only**: Explicitly only support repository-level permissions to limit scope and complexity.
+1. **Security** (but not too restrictive - enable necessary workflows)
+2. **Costs**
+3. **Simplicity**
+
+**Architectural Decisions:**
+
+1. **Stateless** - No database or persistent storage, all validation happens per-request
+2. **Fail Fast** - Errors are returned immediately without retries to keep logic simple
+3. **No Caching** - Fetch fresh data from Secret Manager and GitHub API on every request to avoid stale data
+4. **No Observability** - No logging, no metrics, no monitoring (intentional cost/complexity reduction)
 
 ### Architecture Diagram
 

@@ -4,15 +4,20 @@ Project-specific guidelines for AI-assisted development of the GitHub Repository
 
 ## Project Philosophy
 
-**Core Principle**: Extreme simplicity. This is a single-purpose utility that issues GitHub tokens. Resist feature creep and over-engineering at all costs.
+**Core Principle**: Secure, cost-effective, and simple. This is a single-purpose utility that issues GitHub tokens. Resist feature creep and over-engineering at all costs.
 
-### Design Values (in order of priority)
+### Priorities (in order)
 
-1. **Simplicity** - Minimal code, minimal dependencies, minimal infrastructure
+1. **Security** (but not too restrictive - enable necessary workflows)
+2. **Costs**
+3. **Simplicity**
+
+### Architectural Decisions
+
+1. **Stateless** - No database or persistent storage, all validation happens per-request
 2. **Fail Fast** - No retries, no fallbacks, immediate error responses
-3. **No Observability** - No logging, no metrics, no monitoring (intentional cost/complexity reduction)
-4. **Stateless** - No caching, no persistence, fetch fresh data every request
-5. **Security** - Repository permissions only, read-only security scopes, no token exposure
+3. **No Caching** - Fetch fresh data from Secret Manager and GitHub API on every request
+4. **No Observability** - No logging, no metrics, no monitoring (intentional cost/complexity reduction)
 
 ## Technology Stack
 
