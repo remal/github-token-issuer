@@ -18,10 +18,10 @@
       matchDepTypes: [
         "indirect"
       ],
+      enabled: true,
       major: {
         enabled: false,
       },
-      enabled: true
     },
     {
       matchManagers: [
