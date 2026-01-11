@@ -16,6 +16,15 @@
         "terraform"
       ],
       matchDepTypes: [
+        'required_version'
+      ],
+      rangeStrategy: "bump"
+    },
+    {
+      matchManagers: [
+        "terraform"
+      ],
+      matchDepTypes: [
         '!/^required_version$/'
       ],
       rangeStrategy: "pin"
