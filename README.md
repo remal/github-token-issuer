@@ -1,3 +1,2 @@
-# oss-template
+# GitHub Token Issuer App
 
-Template repository for open-source projects
