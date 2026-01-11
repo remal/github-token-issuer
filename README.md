@@ -184,7 +184,7 @@ The following repository permission scopes are allowed (use the Scope ID in your
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml         # CI/CD deployment workflow
-├── AGENT.md                   # AI agent development guidelines
+├── AGENTS.md                   # AI agent development guidelines
 ├── CLAUDE.md                  # Claude development entry point
 ├── DEVELOPMENT.md             # Technical implementation details
 └── README.md                  # This file
@@ -197,7 +197,7 @@ This is a single-purpose utility. Contributions should maintain simplicity and a
 
 For technical implementation details, architecture decisions, and development setup, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
-For AI-assisted development guidelines, see [CLAUDE.md](CLAUDE.md) and [AGENT.md](AGENT.md).
+For AI-assisted development guidelines, see [AGENTS.md](AGENTS.md).
 
 ## Support
 

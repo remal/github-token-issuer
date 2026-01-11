@@ -2,6 +2,12 @@
 
 Project-specific guidelines for AI-assisted development of the GitHub Repository Token Issuer App.
 
+## Operational Constraints
+
+- **Budget Watchdog:** You are running on a restricted token budget.
+- **Trigger:** If our conversation history exceeds 20 messages or the context feels bloated, you MUST end your response with: "⚠️ [Budget Alert] Context is heavy. Run /compact."
+- **Files:** Do not read lockfiles (package-lock.json, etc) or huge logs unless explicitly told.
+
 ## Project Philosophy
 
 **Core Principle**: Secure, cost-effective, and simple. This is a single-purpose utility that issues GitHub tokens. Resist feature creep and over-engineering at all costs.
@@ -21,7 +27,7 @@ Project-specific guidelines for AI-assisted development of the GitHub Repository
 
 ## Technology Stack
 
-- **Language**: Go 1.25+ (use 1.25.* in documentation)
+- **Language**: Go 1.25+
 - **Platform**: Google Cloud Run (2nd generation)
 - **IaC**: Terraform (single main.tf file, GCS backend with locking)
 - **CI/CD**: GitHub Actions (lint → terraform plan → deploy)
@@ -40,16 +46,17 @@ action.yml    # Composite action in root
 ```
 
 **Never** create files in repository root except:
+
 - `action.yml` (already exists)
-- Documentation (README.md, DEVELOPMENT.md, AGENT.md, CLAUDE.md)
+- Documentation (README.md, DEVELOPMENT.md, AGENTS.md, CLAUDE.md)
 - Standard files (.gitignore, LICENSE, etc.)
 
 ## Documentation Standards
 
 - **README.md**: User-facing only (overview, usage, error codes, repo structure)
 - **DEVELOPMENT.md**: Technical details (architecture, implementation, local dev, deployment)
-- **AGENT.md**: AI agent development guidelines (this file)
-- **CLAUDE.md**: Main entry point that includes AGENT.md
+- **AGENTS.md**: AI agent development guidelines (this file)
+- **CLAUDE.md**: Main entry point that includes AGENTS.md
 - Keep Table of Contents updated in README.md and DEVELOPMENT.md
 - No emojis unless explicitly requested
 - Use GitHub-flavored markdown
@@ -58,15 +65,19 @@ action.yml    # Composite action in root
 
 1. **Repository permissions only** - Never add organization or account-level permissions
 2. **Read-only security scopes** - These must stay read-only:
-   - `code_scanning`
-   - `dependabot_alerts`
-   - `security_advisories`
-   - `secret_scanning`
+
+- `code_scanning`
+- `dependabot_alerts`
+- `security_advisories`
+- `secret_scanning`
+
 3. **No logging** of:
-   - OIDC tokens
-   - GitHub App private keys
-   - Installation access tokens
-   - JWT tokens
+
+- OIDC tokens
+- GitHub App private keys
+- Installation access tokens
+- JWT tokens
+
 4. **Duplicate scope rejection** - Always return 400 if same scope appears multiple times
 
 ## What NOT to Add (Unless Explicitly Requested)
@@ -81,7 +92,7 @@ action.yml    # Composite action in root
 - ❌ Custom token expiration
 - ❌ Organization permissions
 - ❌ Testing infrastructure (mentioned as "will think about later")
-- ❌ Documentation beyond README.md, DEVELOPMENT.md, AGENT.md, CLAUDE.md
+- ❌ Documentation beyond README.md, DEVELOPMENT.md, AGENTS.md, CLAUDE.md
 
 ## Code Style
 
@@ -121,6 +132,7 @@ action.yml    # Composite action in root
 ## Scope Management
 
 **Allowlist** (in `function/scopes.go`):
+
 - 25 repository permission scopes
 - Map of scope_id → []string{"read", "write"} or []string{"read"}
 - Security scopes are read-only
@@ -128,6 +140,7 @@ action.yml    # Composite action in root
 **Blacklist**: Currently empty, can be used to block specific scopes
 
 **Validation order**:
+
 1. Check for duplicates → 400
 2. Check blacklist → 400
 3. Check allowlist → 400
@@ -153,10 +166,13 @@ action.yml    # Composite action in root
 ## Error Response Format
 
 Always return JSON errors with this structure:
+
 ```json
 {
   "error": "Human-readable message",
-  "details": { /* optional context */ }
+  "details": {
+    /* optional context */
+  }
 }
 ```
 
@@ -175,11 +191,13 @@ Standard status codes: 400, 401, 403, 500, 503 (see DEVELOPMENT.md for mappings)
 ### Request Format
 
 **Query Parameters**:
+
 ```
 ?contents=write&deployments=write&statuses=write
 ```
 
 **Headers**:
+
 ```
 Authorization: Bearer <GITHUB_OIDC_TOKEN>
 ```
@@ -189,6 +207,7 @@ Authorization: Bearer <GITHUB_OIDC_TOKEN>
 ### Response Format
 
 **Success (200)**:
+
 ```json
 {
   "token": "ghs_...",
@@ -201,10 +220,13 @@ Authorization: Bearer <GITHUB_OIDC_TOKEN>
 ```
 
 **Error (4xx/5xx)**:
+
 ```json
 {
   "error": "Human-readable message",
-  "details": { /* optional */ }
+  "details": {
+    /* optional */
+  }
 }
 ```
 
