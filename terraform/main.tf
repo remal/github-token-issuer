@@ -21,7 +21,7 @@ provider "google" {
 
 # Service Account for Cloud Function
 resource "google_service_account" "cloud_function_sa" {
-  account_id   = "github-repository-token-issuer-sa"
+  account_id   = "gh-repo-token-issuer-sa"
   display_name = "GitHub Repository Token Issuer Service Account"
   description  = "Service account for github-repository-token-issuer Cloud Function"
 }

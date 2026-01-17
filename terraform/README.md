@@ -92,7 +92,7 @@ After successful deployment, Terraform will output the Cloud Run service URL.
 This configuration creates the following GCP resources:
 
 - **Cloud Run Service** (`github-repository-token-issuer`) - The serverless function
-- **Service Account** (`github-repository-token-issuer-sa`) - Identity for Cloud Run
+- **Service Account** (`gh-repo-token-issuer-sa`) - Identity for Cloud Run
 - **Artifact Registry Repository** - Docker container registry
 - **Workload Identity Pool** (`github-actions`) - For GitHub OIDC authentication
 - **Workload Identity Pool Provider** (`github-oidc`) - GitHub OIDC configuration
@@ -163,7 +163,7 @@ If Cloud Run can't access the secret:
 
 ```bash
 gcloud secrets add-iam-policy-binding github-app-private-key \
-  --member="serviceAccount:github-repository-token-issuer-sa@PROJECT_ID.iam.gserviceaccount.com" \
+  --member="serviceAccount:gh-repo-token-issuer-sa@PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
 
