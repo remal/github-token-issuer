@@ -53,7 +53,7 @@ resource "google_cloud_run_v2_service" "github_token_issuer" {
       resources {
         limits = {
           memory = "128Mi"
-          cpu    = "1"
+          cpu    = "0.5"
         }
       }
 
