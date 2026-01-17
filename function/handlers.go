@@ -125,7 +125,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	githubClient := NewGitHubClientWithJWT(jwtToken)
 
 	// Get installation ID for repository
-	installationID, err := GetInstallationID(ctx, githubClient, repository)
+	installationID, err := GetInstallationID(ctx, githubClient.Apps, repository)
 	if err != nil {
 		if strings.Contains(err.Error(), "not installed") {
 			writeError(w, http.StatusForbidden, err.Error(), nil)
@@ -136,7 +136,7 @@ func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create installation token with requested scopes
-	token, err := CreateInstallationToken(ctx, githubClient, installationID, scopes)
+	token, err := CreateInstallationToken(ctx, githubClient.Apps, installationID, scopes)
 	if err != nil {
 		if strings.Contains(err.Error(), "insufficient permissions") ||
 			strings.Contains(err.Error(), "fewer scopes") ||

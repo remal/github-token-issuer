@@ -85,8 +85,14 @@ func CreateJWT(privateKey *rsa.PrivateKey, appID string) (string, error) {
 	return signedToken, nil
 }
 
+// GitHubAppsService defines the GitHub Apps API methods used by this package.
+type GitHubAppsService interface {
+	FindRepositoryInstallation(ctx context.Context, owner, repo string) (*github.Installation, *github.Response, error)
+	CreateInstallationToken(ctx context.Context, id int64, opts *github.InstallationTokenOptions) (*github.InstallationToken, *github.Response, error)
+}
+
 // GetInstallationID finds the GitHub App installation ID for the given repository.
-func GetInstallationID(ctx context.Context, client *github.Client, repository string) (int64, error) {
+func GetInstallationID(ctx context.Context, apps GitHubAppsService, repository string) (int64, error) {
 	parts := strings.Split(repository, "/")
 	if len(parts) != 2 {
 		return 0, fmt.Errorf("invalid repository format: %s", repository)
@@ -94,7 +100,7 @@ func GetInstallationID(ctx context.Context, client *github.Client, repository st
 
 	owner, repo := parts[0], parts[1]
 
-	installation, resp, err := client.Apps.FindRepositoryInstallation(ctx, owner, repo)
+	installation, resp, err := apps.FindRepositoryInstallation(ctx, owner, repo)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusNotFound {
 			return 0, fmt.Errorf("GitHub App is not installed on repository %s", repository)
@@ -110,7 +116,7 @@ func GetInstallationID(ctx context.Context, client *github.Client, repository st
 }
 
 // CreateInstallationToken requests an installation access token from GitHub with the specified permissions.
-func CreateInstallationToken(ctx context.Context, client *github.Client, installationID int64, scopes map[string]string) (*github.InstallationToken, error) {
+func CreateInstallationToken(ctx context.Context, apps GitHubAppsService, installationID int64, scopes map[string]string) (*github.InstallationToken, error) {
 	// Build permissions map
 	permissions := &github.InstallationPermissions{}
 
@@ -166,7 +172,7 @@ func CreateInstallationToken(ctx context.Context, client *github.Client, install
 		Permissions: permissions,
 	}
 
-	token, resp, err := client.Apps.CreateInstallationToken(ctx, installationID, opts)
+	token, resp, err := apps.CreateInstallationToken(ctx, installationID, opts)
 	if err != nil {
 		if resp != nil && resp.StatusCode == http.StatusForbidden {
 			return nil, fmt.Errorf("insufficient permissions for requested scopes")

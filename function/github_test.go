@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -493,5 +496,287 @@ func TestNewGitHubClientWithJWT(t *testing.T) {
 	// Step 2: Verify client is not nil
 	if client == nil {
 		t.Error("NewGitHubClientWithJWT() returned nil")
+	}
+}
+
+// mockAppsService implements GitHubAppsService for testing.
+type mockAppsService struct {
+	findRepoInstallation    func(ctx context.Context, owner, repo string) (*github.Installation, *github.Response, error)
+	createInstallationToken func(ctx context.Context, id int64, opts *github.InstallationTokenOptions) (*github.InstallationToken, *github.Response, error)
+}
+
+func (m *mockAppsService) FindRepositoryInstallation(ctx context.Context, owner, repo string) (*github.Installation, *github.Response, error) {
+	return m.findRepoInstallation(ctx, owner, repo)
+}
+
+func (m *mockAppsService) CreateInstallationToken(ctx context.Context, id int64, opts *github.InstallationTokenOptions) (*github.InstallationToken, *github.Response, error) {
+	return m.createInstallationToken(ctx, id, opts)
+}
+
+// TestGetInstallationID tests finding the GitHub App installation ID for a repository.
+// It verifies correct handling of valid repositories, invalid formats, and API errors.
+//
+// Test steps:
+//  1. Create mock GitHubAppsService with configured response
+//  2. Call GetInstallationID with test repository
+//  3. Verify returned installation ID matches expected value
+//  4. Verify error handling for various failure scenarios
+func TestGetInstallationID(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name         string
+		repository   string
+		mockResponse *github.Installation
+		mockResp     *github.Response
+		mockErr      error
+		wantID       int64
+		wantErr      bool
+		errContains  string
+	}{
+		{
+			name:         "valid repository returns installation ID",
+			repository:   "owner/repo",
+			mockResponse: &github.Installation{ID: github.Ptr(int64(12345))},
+			mockResp:     &github.Response{Response: &http.Response{StatusCode: http.StatusOK}},
+			mockErr:      nil,
+			wantID:       12345,
+			wantErr:      false,
+		},
+		{
+			name:         "different installation ID",
+			repository:   "org/project",
+			mockResponse: &github.Installation{ID: github.Ptr(int64(99999))},
+			mockResp:     &github.Response{Response: &http.Response{StatusCode: http.StatusOK}},
+			mockErr:      nil,
+			wantID:       99999,
+			wantErr:      false,
+		},
+		{
+			name:        "invalid repository format - no slash",
+			repository:  "invalidrepo",
+			wantErr:     true,
+			errContains: "invalid repository format",
+		},
+		{
+			name:        "invalid repository format - empty",
+			repository:  "",
+			wantErr:     true,
+			errContains: "invalid repository format",
+		},
+		{
+			name:        "invalid repository format - too many parts",
+			repository:  "a/b/c",
+			wantErr:     true,
+			errContains: "invalid repository format",
+		},
+		{
+			name:         "app not installed - 404 response",
+			repository:   "owner/repo",
+			mockResponse: nil,
+			mockResp:     &github.Response{Response: &http.Response{StatusCode: http.StatusNotFound}},
+			mockErr:      fmt.Errorf("not found"),
+			wantErr:      true,
+			errContains:  "not installed",
+		},
+		{
+			name:         "API error",
+			repository:   "owner/repo",
+			mockResponse: nil,
+			mockResp:     &github.Response{Response: &http.Response{StatusCode: http.StatusInternalServerError}},
+			mockErr:      fmt.Errorf("internal server error"),
+			wantErr:      true,
+			errContains:  "failed to find installation",
+		},
+		{
+			name:         "installation ID is nil",
+			repository:   "owner/repo",
+			mockResponse: &github.Installation{ID: nil},
+			mockResp:     &github.Response{Response: &http.Response{StatusCode: http.StatusOK}},
+			mockErr:      nil,
+			wantErr:      true,
+			errContains:  "installation ID is nil",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Step 1: Create mock service
+			mock := &mockAppsService{
+				findRepoInstallation: func(ctx context.Context, owner, repo string) (*github.Installation, *github.Response, error) {
+					return tt.mockResponse, tt.mockResp, tt.mockErr
+				},
+			}
+
+			// Step 2: Call GetInstallationID
+			gotID, err := GetInstallationID(ctx, mock, tt.repository)
+
+			// Step 3 & 4: Verify results
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("GetInstallationID() error = nil, wantErr = true")
+					return
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("GetInstallationID() error = %v, want containing %q", err, tt.errContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("GetInstallationID() unexpected error = %v", err)
+				return
+			}
+
+			if gotID != tt.wantID {
+				t.Errorf("GetInstallationID() = %v, want %v", gotID, tt.wantID)
+			}
+		})
+	}
+}
+
+// TestCreateInstallationToken tests requesting an installation access token from GitHub.
+// It verifies correct permission mapping, error handling, and scope verification.
+//
+// Test steps:
+//  1. Create mock GitHubAppsService with configured response
+//  2. Call CreateInstallationToken with test scopes
+//  3. Verify returned token matches expected value
+//  4. Verify error handling for various failure scenarios
+func TestCreateInstallationToken(t *testing.T) {
+	ctx := context.Background()
+	testTime := time.Now().Add(1 * time.Hour)
+
+	tests := []struct {
+		name        string
+		installID   int64
+		scopes      map[string]string
+		mockToken   *github.InstallationToken
+		mockResp    *github.Response
+		mockErr     error
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:      "single scope - contents write",
+			installID: 12345,
+			scopes:    map[string]string{"contents": "write"},
+			mockToken: &github.InstallationToken{
+				Token:       github.Ptr("ghs_test123"),
+				ExpiresAt:   &github.Timestamp{Time: testTime},
+				Permissions: &github.InstallationPermissions{Contents: github.Ptr("write")},
+			},
+			mockResp: &github.Response{Response: &http.Response{StatusCode: http.StatusCreated}},
+			mockErr:  nil,
+			wantErr:  false,
+		},
+		{
+			name:      "multiple scopes",
+			installID: 12345,
+			scopes:    map[string]string{"contents": "read", "issues": "write", "pull_requests": "read"},
+			mockToken: &github.InstallationToken{
+				Token:     github.Ptr("ghs_multi"),
+				ExpiresAt: &github.Timestamp{Time: testTime},
+				Permissions: &github.InstallationPermissions{
+					Contents:     github.Ptr("read"),
+					Issues:       github.Ptr("write"),
+					PullRequests: github.Ptr("read"),
+				},
+			},
+			mockResp: &github.Response{Response: &http.Response{StatusCode: http.StatusCreated}},
+			mockErr:  nil,
+			wantErr:  false,
+		},
+		{
+			name:        "forbidden - insufficient permissions",
+			installID:   12345,
+			scopes:      map[string]string{"contents": "write"},
+			mockToken:   nil,
+			mockResp:    &github.Response{Response: &http.Response{StatusCode: http.StatusForbidden}},
+			mockErr:     fmt.Errorf("forbidden"),
+			wantErr:     true,
+			errContains: "insufficient permissions",
+		},
+		{
+			name:        "unprocessable entity - suspended installation",
+			installID:   12345,
+			scopes:      map[string]string{"contents": "write"},
+			mockToken:   nil,
+			mockResp:    &github.Response{Response: &http.Response{StatusCode: http.StatusUnprocessableEntity}},
+			mockErr:     fmt.Errorf("unprocessable"),
+			wantErr:     true,
+			errContains: "suspended",
+		},
+		{
+			name:        "API error",
+			installID:   12345,
+			scopes:      map[string]string{"contents": "write"},
+			mockToken:   nil,
+			mockResp:    &github.Response{Response: &http.Response{StatusCode: http.StatusInternalServerError}},
+			mockErr:     fmt.Errorf("internal error"),
+			wantErr:     true,
+			errContains: "failed to create installation token",
+		},
+		{
+			name:        "unknown scope ID",
+			installID:   12345,
+			scopes:      map[string]string{"unknown_scope": "read"},
+			wantErr:     true,
+			errContains: "unknown scope ID",
+		},
+		{
+			name:      "GitHub returns fewer scopes than requested",
+			installID: 12345,
+			scopes:    map[string]string{"contents": "write", "issues": "write"},
+			mockToken: &github.InstallationToken{
+				Token:       github.Ptr("ghs_partial"),
+				ExpiresAt:   &github.Timestamp{Time: testTime},
+				Permissions: &github.InstallationPermissions{Contents: github.Ptr("write")},
+			},
+			mockResp:    &github.Response{Response: &http.Response{StatusCode: http.StatusCreated}},
+			mockErr:     nil,
+			wantErr:     true,
+			errContains: "fewer scopes",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Step 1: Create mock service
+			mock := &mockAppsService{
+				createInstallationToken: func(ctx context.Context, id int64, opts *github.InstallationTokenOptions) (*github.InstallationToken, *github.Response, error) {
+					return tt.mockToken, tt.mockResp, tt.mockErr
+				},
+			}
+
+			// Step 2: Call CreateInstallationToken
+			token, err := CreateInstallationToken(ctx, mock, tt.installID, tt.scopes)
+
+			// Step 3 & 4: Verify results
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("CreateInstallationToken() error = nil, wantErr = true")
+					return
+				}
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("CreateInstallationToken() error = %v, want containing %q", err, tt.errContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("CreateInstallationToken() unexpected error = %v", err)
+				return
+			}
+
+			if token == nil {
+				t.Error("CreateInstallationToken() returned nil token")
+				return
+			}
+
+			if token.GetToken() != tt.mockToken.GetToken() {
+				t.Errorf("CreateInstallationToken() token = %v, want %v", token.GetToken(), tt.mockToken.GetToken())
+			}
+		})
 	}
 }
