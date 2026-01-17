@@ -23,6 +23,12 @@ jobs:
       uses: steve-todorov/oidc-debugger-action@v1
       with:
         audience: '${{ github.server_url }}/${{ github.repository }}'
+    - uses: google-github-actions/auth@v3
+      with:
+        workload_identity_provider: projects/789540387022/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+        service_account: gh-actions-sa@github-repository-token-issuer.iam.gserviceaccount.com
+    - run: gcloud auth list
+    - run: gcloud projects describe github-repository-token-issuer
 
   build:
     runs-on: ubuntu-latest
