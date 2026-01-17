@@ -71,7 +71,7 @@ jobs:
         terraform_version: ${{steps.terraform-version.outputs.version}}
     - name: Terraform - Init
       working-directory: ./terraform
-      run: terraform init -backend=false
+      run: terraform init
     - name: Terraform - Validate
       working-directory: ./terraform
       run: terraform validate
