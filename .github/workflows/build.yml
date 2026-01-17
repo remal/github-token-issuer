@@ -85,6 +85,13 @@ jobs:
         workload_identity_provider: projects/789540387022/locations/global/workloadIdentityPools/github-pool/providers/github-provider
         service_account: gh-actions-sa@github-repository-token-issuer.iam.gserviceaccount.com
 
+    - name: Terraform - Read version
+      id: terraform-version
+      run: echo "version=$(cat .terraform-version | tr -d '[:space:]')" >> $GITHUB_OUTPUT
+    - name: Terraform - Setup
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{steps.terraform-version.outputs.version}}
     - name: Terraform - Init
       if: ${{github.ref == 'refs/heads/main'}}
       working-directory: ./terraform
